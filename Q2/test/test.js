@@ -119,7 +119,7 @@ describe("Multiplier3 with PLONK", function () {
         console.log(0000)
         const { proof, publicSignals } = await plonk.fullProve({"a":"1","b":"2","c":"3"}, "contracts/circuits/Multiplier3_plonk/Multiplier3_js/Multiplier3.wasm","contracts/circuits/Multiplier3_plonk/circuit_final.zkey");
 
-        console.log('1x2x3 =',publicSignals[0]);
+        console.log('1x2x3 = ',publicSignals[0]);
 
         const editedPublicSignals = unstringifyBigInts(publicSignals);
         const editedProof = unstringifyBigInts(proof);
