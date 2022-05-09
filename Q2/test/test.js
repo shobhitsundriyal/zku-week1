@@ -1,7 +1,8 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const fs = require("fs");
-const { groth16 } = require("snarkjs");
+const { groth16, plonk } = require("snarkjs");
+const { BigNumber } = require("ethers");
 
 function unstringifyBigInts(o) {
     if ((typeof(o) == "string") && (/^[0-9]+$/.test(o) ))  {
@@ -42,7 +43,7 @@ describe("HelloWorld", function () {
         const editedPublicSignals = unstringifyBigInts(publicSignals);
         const editedProof = unstringifyBigInts(proof);
         const calldata = await groth16.exportSolidityCallData(editedProof, editedPublicSignals);
-    
+        
         const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
     
         const a = [argv[0], argv[1]];
@@ -66,13 +67,40 @@ describe("Multiplier3 with Groth16", function () {
 
     beforeEach(async function () {
         //[assignment] insert your script here
+        Verifier = await ethers.getContractFactory("Multiplier3G16Verifier");
+        verifier = await Verifier.deploy();
+        await verifier.deployed();
     });
 
     it("Should return true for correct proof", async function () {
         //[assignment] insert your script here
+        const { proof, publicSignals } = await groth16.fullProve({"a":"1","b":"2","c":"3"}, "contracts/circuits/Multiplier3G16/Multiplier3_js/Multiplier3.wasm","contracts/circuits/Multiplier3G16/circuit_final.zkey");
+        // console.log({ proof, publicSignals })
+        console.log('1x2x3 =',publicSignals[0]);
+
+        const editedPublicSignals = unstringifyBigInts(publicSignals);
+        const editedProof = unstringifyBigInts(proof);
+        const calldata = await groth16.exportSolidityCallData(editedProof, editedPublicSignals);
+    
+        const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
+        // for(let i= 0; i<15; i++){
+
+        //     console.log(i,argv[i])
+        // }
+        const a = [argv[0], argv[1]];
+        const b = [[argv[2], argv[3]], [argv[4], argv[5]]];
+        const c = [argv[6], argv[7]];
+        const Input = argv.slice(8);
+
+        expect(await verifier.verifyProof(a, b, c, Input)).to.be.true;
     });
     it("Should return false for invalid proof", async function () {
         //[assignment] insert your script here
+        let a = [0, 0];
+        let b = [[0, 0], [0, 0]];
+        let c = [0, 0];
+        let d = [0]
+        expect(await verifier.verifyProof(a, b, c, d)).to.be.false;
     });
 });
 
@@ -81,12 +109,36 @@ describe("Multiplier3 with PLONK", function () {
 
     beforeEach(async function () {
         //[assignment] insert your script here
+        Verifier = await ethers.getContractFactory("Multiplier3_plonk_Verifier");
+        verifier = await Verifier.deploy();
+        await verifier.deployed();
     });
 
     it("Should return true for correct proof", async function () {
         //[assignment] insert your script here
+        console.log(0000)
+        const { proof, publicSignals } = await plonk.fullProve({"a":"1","b":"2","c":"3"}, "contracts/circuits/Multiplier3_plonk/Multiplier3_js/Multiplier3.wasm","contracts/circuits/Multiplier3_plonk/circuit_final.zkey");
+
+        console.log('1x2x3 =',publicSignals[0]);
+
+        const editedPublicSignals = unstringifyBigInts(publicSignals);
+        const editedProof = unstringifyBigInts(proof);
+        const calldata = await plonk.exportSolidityCallData(editedProof, editedPublicSignals);
+    
+        const argv = calldata.replace(/["[\]\s]/g, "").split(',').map(x => BigInt(x).toString());
+
+        const a = BigNumber.from(argv[0])
+        const Input = argv.slice(1);
+        expect(await verifier.verifyProof(a, Input)).to.be.true;
     });
     it("Should return false for invalid proof", async function () {
         //[assignment] insert your script here
+        // let a = [0, 0];
+        // let b = [[0, 0], [0, 0]];
+        // let c = [0, 0];
+        // let d = [0]
+        let a = 0
+        let d = [0]
+        expect(await verifier.verifyProof(a, d)).to.be.false;
     });
 });
